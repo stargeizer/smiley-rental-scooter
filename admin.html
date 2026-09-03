@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Fleet — Smiley Rental drag-drop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>body{font-family:'Poppins',sans-serif} .dragging{opacity:.4} .drop-hover{outline:3px dashed #00a8cc;background:#e6f7fb}</style>
+</head>
+<body class="bg-[#f8fbff] text-slate-800">
+<nav class="bg-white shadow-sm sticky top-0 z-50"><div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+<a href="index.html" class="font-extrabold text-[#0a3d62]">SMILEY <span class="text-[#ffb400]">RENTAL</span> <span class="text-xs text-slate-400">ADMIN</span></a>
+<div class="flex gap-2">
+<a href="index.html" class="px-4 py-2 rounded-full border text-sm font-bold">← Lihat Site</a>
+<button id="btnSave" class="bg-[#00a8cc] text-white px-6 py-2 rounded-full font-bold text-sm">💾 Simpan & Download index.html</button>
+<button id="btnReset" class="bg-slate-100 px-4 py-2 rounded-full text-sm">Reset</button>
+</div>
+</div></nav>
+
+<div class="max-w-7xl mx-auto px-4 py-6 grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
+
+<!-- LEFT: Fleet cards -->
+<div>
+<h2 class="font-extrabold text-lg text-[#0a3d62]">1️⃣ Fleet — drag foto dari kanan ke card di bawah</h2>
+<p class="text-sm text-slate-500">Drop foto ke card untuk ganti. Urutan bisa drag card-nya juga. Klik ✏️ untuk edit nama/harga.</p>
+<div id="fleetGrid" class="grid md:grid-cols-2 gap-4 mt-4"></div>
+<div class="mt-4 bg-white border rounded-xl p-4 text-sm">
+<b>Cara pakai:</b> Geser foto dari galeri kanan → drop ke card. Atau upload foto baru di galeri. Klik Simpan → download <code>index.html</code> baru, upload ke GitHub (drag ke repo → Commit).
+<p class="text-xs text-slate-400 mt-2">Tips: foto asli sebaiknya 800x600, < 500KB. Nama file otomatis: scoopy.jpg, vario125.jpg dll.</p>
+</div>
+</div>
+
+<!-- RIGHT: Gallery -->
+<div>
+<h2 class="font-extrabold text-lg text-[#0a3d62]">2️⃣ Galeri Foto</h2>
+<p class="text-sm text-slate-500">Drag dari sini. Bisa upload baru.</p>
+<label class="mt-3 block bg-white border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50">
+<input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+<span class="text-sm">📤 Klik / drop foto baru di sini (JPG/PNG)</span>
+<p class="text-xs text-slate-400">Otomatis masuk galeri, tinggal drag ke fleet</p>
+</label>
+<div id="gallery" class="grid grid-cols-3 gap-3 mt-4"></div>
+<div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs">
+<b>Foto saat ini di site:</b> <span id="galCount"></span> file di <code>assets/fleet/</code><br>
+Kalau upload foto baru, setelah download <code>index.html</code> jangan lupa upload juga file fotonya ke folder <code>assets/fleet/</code> di GitHub.
+</div>
+</div>
+
+</div>
+
+<!-- Editor modal -->
+<div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+<div class="bg-white rounded-2xl p-6 w-full max-w-md">
+<h3 class="font-bold">Edit Fleet</h3>
+<label class="text-sm mt-3 block">Nama <input id="mName" class="w-full border rounded-xl px-3 py-2 mt-1"></label>
+<label class="text-sm mt-2 block">Harga label <input id="mPrice" class="w-full border rounded-xl px-3 py-2 mt-1" placeholder="Rp 80K / HARI"></label>
+<label class="text-sm mt-2 block">Deskripsi <input id="mDesc" class="w-full border rounded-xl px-3 py-2 mt-1"></label>
+<label class="text-sm mt-2 block">Harga WA (angka) <input id="mWaPrice" class="w-full border rounded-xl px-3 py-2 mt-1" placeholder="80k"></label>
+<div class="flex gap-2 mt-4">
+<button id="mSave" class="bg-[#00a8cc] text-white px-6 py-2 rounded-full font-bold">Simpan</button>
+<button onclick="document.getElementById('modal').classList.add('hidden')" class="bg-slate-100 px-4 py-2 rounded-full">Batal</button>
+</div>
+</div>
+</div>
+
+<script>
+const DEFAULT_FLEET = [
+ {id:'scoopy', name:'Honda Scoopy', price:'Rp 80K / HARI', priceColor:'text-emerald-600', desc:'Irit, stylish — unit real DK 5150 NI (stiker Smiley 23 Toya Pakeh)', img:'assets/fleet/scoopy-dk5150.jpg', wa:'Halo Smiley - mau sewa Scoopy 80k'},
+ {id:'vario125', name:'Honda Vario 125cc', price:'Rp 80K / HARI', priceColor:'text-emerald-600', desc:'Lincah, irit BBM, favorit harian — unit ready, foto menyusul', img:'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600&q=80', wa:'Halo Smiley - mau sewa Vario 125 80k'},
+ {id:'stylo', name:'Honda Stylo 160', price:'Rp 100K / HARI', priceColor:'text-amber-600', desc:'Retro stylish, nyaman touring — unit ready, foto menyusul', img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=600&q=80', wa:'Halo Smiley - mau sewa Stylo 100k'},
+ {id:'vario160', name:'Honda Vario 160cc', price:'Rp 100K / HARI', priceColor:'text-amber-600', desc:'Power pas tanjakan Penida — unit real DK 2534 NE 09-27', img:'assets/fleet/vario160-dk2534.jpg', wa:'Halo Smiley - mau sewa Vario 160 100k'},
+ {id:'filano', name:'Yamaha Filano', price:'Rp 100K / HARI', priceColor:'text-amber-600', desc:'Classy, irit — unit real DK 3034 NJ Fazzio/Filano Hybrid', img:'assets/fleet/filano-fazzio-dk3034.jpg', wa:'Halo Smiley - mau sewa Filano 100k'},
+ {id:'pcx', name:'Honda PCX 160', price:'Rp 150K / HARI • PREMIUM', priceColor:'text-[#00a8cc]', desc:'Nyaman berdua — foto real customer di pantai Penida', img:'assets/fleet/pcx-black-2men.jpg', wa:'Halo Smiley - mau sewa PCX 150k'},
+ {id:'nmax', name:'Yamaha NMAX 155', price:'Rp 150K / HARI • PREMIUM', priceColor:'text-[#00a8cc]', desc:'Paling nyaman, ABS — unit real DK 3545 NI 09-29', img:'assets/fleet/nmax-dk3545.jpg', wa:'Halo Smiley - mau sewa NMAX 150k'},
+ {id:'adv', name:'Honda ADV 160', price:'Rp 150K / HARI • PREMIUM', priceColor:'text-[#00a8cc]', desc:'Adventure — unit ready, foto menyusul', img:'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&q=80', wa:'Halo Smiley - mau sewa ADV 150k'},
+ {id:'wr', name:'Yamaha WR 155', price:'Rp 250K / HARI • TRAIL', priceColor:'text-[#b77900]', desc:'Trail sejati — unit real WR155 full touring rack & crash guard', img:'assets/fleet/wr155-black-cyan.jpg', wa:'Halo Smiley - mau sewa WR 250k'},
+];
+let fleet = JSON.parse(localStorage.getItem('smiley_fleet') || 'null') || JSON.parse(JSON.stringify(DEFAULT_FLEET));
+let gallery = [
+ 'assets/fleet/scoopy-dk5150.jpg','assets/fleet/vario160-dk2534.jpg','assets/fleet/filano-fazzio-dk3034.jpg','assets/fleet/pcx-black-2men.jpg','assets/fleet/nmax-dk3545.jpg','assets/fleet/wr155-black-cyan.jpg',
+ 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600&q=80','https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=600&q=80','https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&q=80',
+];
+let editIdx=null;
+
+function render(){
+ const g=document.getElementById('fleetGrid'); g.innerHTML='';
+ fleet.forEach((f,i)=>{
+  const el=document.createElement('div');
+  el.className='bg-white rounded-[20px] overflow-hidden border shadow-sm group relative';
+  el.draggable=true; el.dataset.idx=i;
+  el.innerHTML=`
+   <div class="h-44 bg-cover bg-center relative" style="background-image:url('${f.img}')">
+    <span class="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">#${i+1} • drag card untuk reorder</span>
+    <span class="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded-full">drop foto di sini</span>
+   </div>
+   <div class="p-4">
+    <p class="text-xs font-bold ${f.priceColor}">${f.price}</p>
+    <h3 class="font-bold text-sm">${f.name}</h3>
+    <p class="text-xs text-slate-500">${f.desc}</p>
+    <div class="flex gap-2 mt-3">
+      <button onclick="edit(${i})" class="text-xs bg-slate-100 px-3 py-1.5 rounded-full">✏️ Edit</button>
+      <span class="text-xs text-slate-400 truncate flex-1">${f.img.split('/').pop()}</span>
+    </div>
+   </div>`;
+  // drag card reorder
+  el.addEventListener('dragstart',e=>{e.dataTransfer.setData('card',i); el.classList.add('dragging')});
+  el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+  el.addEventListener('dragover',e=>{e.preventDefault(); el.classList.add('drop-hover')});
+  el.addEventListener('dragleave',()=>el.classList.remove('drop-hover'));
+  el.addEventListener('drop',e=>{
+    e.preventDefault(); el.classList.remove('drop-hover');
+    const img=e.dataTransfer.getData('text/plain')||e.dataTransfer.getData('img');
+    if(img){ f.img=img; save(); render(); renderGallery(); return; }
+    const card=e.dataTransfer.getData('card');
+    if(card!=='' && card!=i){ const moved=fleet.splice(card,1)[0]; fleet.splice(i,0,moved); save(); render(); }
+  });
+  g.appendChild(el);
+ });
+}
+
+function renderGallery(){
+ const gal=document.getElementById('gallery'); gal.innerHTML='';
+ gallery.forEach(src=>{
+  const d=document.createElement('div');
+  d.className='bg-white rounded-xl overflow-hidden border p-1 cursor-grab';
+  d.draggable=true;
+  d.innerHTML=`<div class="h-24 bg-cover bg-center rounded-lg" style="background-image:url('${src}')"></div><p class="text-xs text-center truncate mt-1">${src.split('/').pop().slice(0,18)}</p>`;
+  d.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',src); e.dataTransfer.setData('img',src)});
+  gal.appendChild(d);
+ });
+ document.getElementById('galCount').textContent=gallery.length;
+}
+
+function save(){ localStorage.setItem('smiley_fleet', JSON.stringify(fleet)); }
+
+function edit(i){
+ editIdx=i; const f=fleet[i];
+ document.getElementById('mName').value=f.name;
+ document.getElementById('mPrice').value=f.price;
+ document.getElementById('mDesc').value=f.desc;
+ document.getElementById('mWaPrice').value=f.wa;
+ document.getElementById('modal').classList.remove('hidden');
+}
+document.getElementById('mSave').onclick=()=>{
+ if(editIdx===null) return;
+ fleet[editIdx].name=document.getElementById('mName').value;
+ fleet[editIdx].price=document.getElementById('mPrice').value;
+ fleet[editIdx].desc=document.getElementById('mDesc').value;
+ fleet[editIdx].wa=document.getElementById('mWaPrice').value;
+ save(); render(); document.getElementById('modal').classList.add('hidden');
+};
+
+document.getElementById('fileInput').addEventListener('change',e=>{
+ [...e.target.files].forEach(file=>{
+  const url=URL.createObjectURL(file);
+  gallery.unshift(url);
+  // keep object URL for session; on save user must remember to upload file to assets/fleet with same name
+ });
+ renderGallery();
+});
+document.getElementById('btnReset').onclick=()=>{ localStorage.removeItem('smiley_fleet'); fleet=JSON.parse(JSON.stringify(DEFAULT_FLEET)); render(); };
+document.getElementById('btnSave').onclick=async()=>{
+ // Fetch original index.html, replace fleet section, download
+ const orig=await fetch('index.html').then(r=>r.text());
+ let newFleetHtml = fleet.map(f=>`
+      <div class="rounded-[20px] overflow-hidden border shadow-sm hover:shadow-lg transition group">
+        <div class="h-40 bg-cover bg-center" style="background-image:url('${f.img}')"></div>
+        <div class="p-5">
+          <p class="text-xs font-bold ${f.priceColor}">${f.price}</p>
+          <h3 class="font-bold">${f.name}</h3>
+          <p class="text-xs text-slate-500 mt-1">${f.desc}</p>
+          <a href="https://wa.me/6281999788797" data-msg="${f.wa}" class="mt-3 block text-center ${f.id==='wr' ? 'bg-[#ffb400] hover:bg-[#e6a200]' : 'bg-[#0a3d62] group-hover:bg-[#00a8cc]'} text-white rounded-full py-2.5 text-sm font-bold transition">BOOK ${f.name.split(' ').pop()} — ${f.price.match(/Rp \\d+K/)[0]}</a>
+        </div>
+      </div>`).join('\n');
+ // Replace old fleet grid (between grid md:grid-cols-3 ...)
+ const replaced = orig.replace(/<div class="grid md:grid-cols-3 gap-6 mt-8">[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/, `<div class="grid md:grid-cols-3 gap-6 mt-8">\n${newFleetHtml}\n    </div>\n  </div>\n</section>`);
+ const blob=new Blob([replaced],{type:'text/html'});
+ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='index.html'; a.click();
+ alert('index.html terdownload! Upload file ini + foto baru (jika ada) ke GitHub repo → Commit → site update 1 menit.');
+};
+
+render(); renderGallery();
+</script>
+</body>
+</html>
